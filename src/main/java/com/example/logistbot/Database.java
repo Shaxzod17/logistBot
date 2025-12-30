@@ -26,6 +26,8 @@ public class Database {
                 phone_number VARCHAR(50),
                 status VARCHAR(50) DEFAULT 'START',
                 is_admin BOOLEAN DEFAULT FALSE,
+                last_message_date TIMESTAMP,
+                last_reminder_date TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """;
@@ -198,6 +200,49 @@ public class Database {
             e.printStackTrace();
         }
         return messages;
+    }
+
+    public static void updateLastMessageDate(Long chatId) {
+        String sql = "UPDATE users SET last_message_date = CURRENT_TIMESTAMP WHERE chat_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, chatId);
+            stmt.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<Long> getUsersNeedingReminder() {
+        List<Long> users = new ArrayList<>();
+        String sql = """
+        SELECT chat_id FROM users 
+        WHERE status = 'REGISTERED' 
+        AND (last_message_date IS NULL OR last_message_date < NOW() - INTERVAL '15 days')
+        AND (last_reminder_date IS NULL OR last_reminder_date < NOW() - INTERVAL '15 days')
+    """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                users.add(rs.getLong("chat_id"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return users;
+    }
+
+    public static void updateLastReminderDate(Long chatId) {
+        String sql = "UPDATE users SET last_reminder_date = CURRENT_TIMESTAMP WHERE chat_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, chatId);
+            stmt.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void markMessageAsRead(int messageId) {

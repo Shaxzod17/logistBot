@@ -15,6 +15,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LogistBot extends TelegramLongPollingBot {
+    private static LogistBot instance;
+
+    public LogistBot() {
+        instance = this;
+    }
+
+    public static LogistBot getInstance() {
+        return instance;
+    }
 
     // Method to check if user is admin (from database)
     private boolean isAdmin(Long chatId) {
@@ -45,7 +54,7 @@ public class LogistBot extends TelegramLongPollingBot {
         // Handle /start command
         if (update.getMessage().hasText() && update.getMessage().getText().equals("/start")) {
             Database.updateUserStatus(chatId, "WAITING_NAME");
-            sendText(chatId, "Assalomu aleykum! 👋\n\nIltimos, ismingizni kiriting:");
+            sendText(chatId, "Hello! 👋\n\nPlease, enter your name:");
             return;
         }
 
@@ -53,12 +62,12 @@ public class LogistBot extends TelegramLongPollingBot {
         if (update.getMessage().hasText() && update.getMessage().getText().equals("/new-admin")) {
             if (status.equals("REGISTERED") || isAdmin(chatId)) {
                 Database.setUserAdmin(chatId, true);
-                sendText(chatId, "✅ Tabriklaymiz! Siz endi admin huquqiga egasiz!\n\n" +
-                        "Admin buyruqlarini ko'rish uchun /admin yuboring.");
+                sendText(chatId, "✅ Congratulations! You now have admin rights!\n\n" +
+                        "To see admin commands, type /admin.");
                 System.out.println("New admin registered: " + chatId);
                 return;
             } else {
-                sendText(chatId, "⚠️ Avval ro'yxatdan o'ting! /start ni bosing.");
+                sendText(chatId, "⚠️ Please register first! Type /start.");
                 return;
             }
         }
@@ -80,7 +89,7 @@ public class LogistBot extends TelegramLongPollingBot {
                 Database.updateUserStatus(chatId, "REGISTERED");
                 sendMainMenu(chatId);
             } else {
-                sendText(chatId, "Iltimos, kontaktingizni ulashing! 📞");
+                sendText(chatId, "Please share your contact! 📞");
             }
             return;
         }
@@ -110,7 +119,7 @@ public class LogistBot extends TelegramLongPollingBot {
             if (update.getMessage().hasText()) {
                 String message = update.getMessage().getText();
                 saveUserMessage(chatId, status, message);
-                sendText(chatId, "✅ Sizning xabaringiz qabul qilindi! Rahmat!");
+                sendText(chatId, "✅ Your message has been received! Thank you!");
                 Database.updateUserStatus(chatId, "REGISTERED");
                 sendMainMenu(chatId);
             }
@@ -121,7 +130,7 @@ public class LogistBot extends TelegramLongPollingBot {
         if (status.equals("WAITING_NEW_IDEA") && update.getMessage().hasText()) {
             String idea = update.getMessage().getText();
             saveUserMessage(chatId, "NEW_IDEA", idea);
-            sendText(chatId, "✅ Sizning g'oyangiz qabul qilindi! Rahmat!");
+            sendText(chatId, "✅ Your idea has been accepted! Thank you!");
             Database.updateUserStatus(chatId, "REGISTERED");
             sendMainMenu(chatId);
             return;
@@ -186,7 +195,7 @@ public class LogistBot extends TelegramLongPollingBot {
             }
             case "/removeadmin" -> {
                 Database.setUserAdmin(chatId, false);
-                sendText(chatId, "✅ Admin huquqingiz olib tashlandi!");
+                sendText(chatId, "✅ Your admin rights have been removed!");
                 return true;
             }
             default -> {
@@ -341,17 +350,17 @@ public class LogistBot extends TelegramLongPollingBot {
         List<Long> admins = Database.getAllAdmins();
 
         if (admins.isEmpty()) {
-            sendText(chatId, "📭 Hech qanday admin yo'q.");
+            sendText(chatId, "📭 No admins found.");
             return;
         }
 
-        StringBuilder message = new StringBuilder("👥 **Barcha Adminlar** (" + admins.size() + "):\n\n");
+        StringBuilder message = new StringBuilder("👥 **All admins** (" + admins.size() + "):\n\n");
 
         int count = 1;
         for (Long adminChatId : admins) {
             message.append(count++).append(". Chat ID: ").append(adminChatId);
             if (adminChatId.equals(chatId)) {
-                message.append(" (Siz)");
+                message.append(" (You)");
             }
             message.append("\n");
         }
@@ -368,7 +377,6 @@ public class LogistBot extends TelegramLongPollingBot {
                 %s Message ID: %d
                 👤 User: %s
                 📞 Phone: %s
-                💬 Chat ID: %d
                 📂 Category: %s
                 
                 💬 Message:
@@ -381,7 +389,6 @@ public class LogistBot extends TelegramLongPollingBot {
                 msg.getId(),
                 msg.getUserName() != null ? msg.getUserName() : "Unknown",
                 msg.getPhoneNumber() != null ? msg.getPhoneNumber() : "N/A",
-                msg.getChatId(),
                 msg.getStatusCode(),
                 msg.getMessage(),
                 dateFormat.format(msg.getCreatedAt())
@@ -448,24 +455,24 @@ public class LogistBot extends TelegramLongPollingBot {
             }
             case "💡 New Idea" -> {
                 Database.updateUserStatus(chatId, "WAITING_NEW_IDEA");
-                sendText(chatId, "💡 Yangi g'oyangizni yozing:");
+                sendText(chatId, "💡 Enter your idea:");
             }
-            case "🔙 Orqaga" -> {
+            case "🔙 Back" -> {
                 Database.updateUserStatus(chatId, "REGISTERED");
                 sendMainMenu(chatId);
             }
-            default -> sendText(chatId, "Noto'g'ri tanlov. Iltimos, tugmalardan birini tanlang.");
+            default -> sendText(chatId, "Invalid choice. Please select one of the buttons.");
         }
     }
 
     private void handleSubmenuSelection(Long chatId, String selection, String status) {
-        if (selection.equals("🔙 Orqaga")) {
+        if (selection.equals("🔙 Back")) {
             Database.updateUserStatus(chatId, "REGISTERED");
             sendMainMenu(chatId);
             return;
         }
 
-        if (selection.equals("✍️ Other (o'z g'oyam)")) {
+        if (selection.equals("✍️ Other (your idea)")) {
             String category = switch (status) {
                 case "DISPATCH_MENU" -> "DISPATCH";
                 case "ACCOUNTING_MENU" -> "ACCOUNTING";
@@ -476,13 +483,13 @@ public class LogistBot extends TelegramLongPollingBot {
                 default -> "OTHER";
             };
             Database.updateUserStatus(chatId, "WAITING_" + category + "_OTHER");
-            sendText(chatId, "✍️ O'z g'oyangizni yozing:");
+            sendText(chatId, "✍️ Write your idea:");
             return;
         }
 
         String statusCode = getStatusCode(status, selection);
         Database.updateUserStatus(chatId, statusCode);
-        sendText(chatId, "✍️ Iltimos, xabaringizni yozing:");
+        sendText(chatId, "✍️ Please, type your message:");
     }
 
     private String getStatusCode(String menuStatus, String selection) {
@@ -520,6 +527,9 @@ public class LogistBot extends TelegramLongPollingBot {
             stmt.executeUpdate();
             System.out.println("Message saved with status: " + statusCode + " - " + message);
 
+            // Track last message date
+            Database.updateLastMessageDate(chatId);
+
             notifyAdmin(chatId, statusCode, message);
 
         } catch (Exception e) {
@@ -541,7 +551,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendContactRequest(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Iltimos, telefon raqamingizni ulashing 📞");
+        message.setText("Please share your phone number. 📞");
 
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
@@ -551,7 +561,7 @@ public class LogistBot extends TelegramLongPollingBot {
         KeyboardRow row = new KeyboardRow();
 
         KeyboardButton contactButton = new KeyboardButton();
-        contactButton.setText("📞 Kontaktni ulashish");
+        contactButton.setText("📞 Send contact");
         contactButton.setRequestContact(true);
 
         row.add(contactButton);
@@ -566,7 +576,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendMainMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Ro'yxatdan o'tdingiz! ✅\n\nQuyidagi bo'limlardan birini tanlang:");
+        message.setText("You are registered! ✅\n\nChoose one of the following sections:");
 
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
@@ -603,7 +613,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendDispatchMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("📦 Dispatch Team - Quyidagilardan birini tanlang:");
+        message.setText("📦 Dispatch Team - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Gross", "Mile", "Relationship"));
         execute(message);
     }
@@ -612,7 +622,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendAccountingMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("💰 Accounting - Quyidagilardan birini tanlang:");
+        message.setText("💰 Accounting - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Payment", "Statement"));
         execute(message);
     }
@@ -621,7 +631,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendFleetMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("🚛 Fleet Team - Quyidagilardan birini tanlang:");
+        message.setText("🚛 Fleet Team - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Resolve Issues", "Responsibility"));
         execute(message);
     }
@@ -630,7 +640,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendSafetyMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("🛡 Safety - Quyidagilardan birini tanlang:");
+        message.setText("🛡 Safety - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Resolve Issues", "Responsibility"));
         execute(message);
     }
@@ -639,7 +649,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendELDMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("📱 ELD Team - Quyidagilardan birini tanlang:");
+        message.setText("📱 ELD Team - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Resolve Issues", "Responsibility"));
         execute(message);
     }
@@ -648,7 +658,7 @@ public class LogistBot extends TelegramLongPollingBot {
     private void sendHRMenu(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("👥 HR - Quyidagilardan birini tanlang:");
+        message.setText("👥 HR - Choose one of the following sections:");
         message.setReplyMarkup(createSubmenu("Responsibility", "Relationship"));
         execute(message);
     }
@@ -669,11 +679,11 @@ public class LogistBot extends TelegramLongPollingBot {
         }
 
         KeyboardRow lastRow = new KeyboardRow();
-        lastRow.add("✍️ Other (o'z g'oyam)");
+        lastRow.add("✍️ Other (your idea)");
         keyboardRows.add(lastRow);
 
         KeyboardRow backRow = new KeyboardRow();
-        backRow.add("🔙 Orqaga");
+        backRow.add("🔙 Back");
         keyboardRows.add(backRow);
 
         keyboard.setKeyboard(keyboardRows);
