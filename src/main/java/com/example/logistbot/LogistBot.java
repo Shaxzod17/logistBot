@@ -59,7 +59,7 @@ public class LogistBot extends TelegramLongPollingBot {
         }
 
         // Handle /new-admin command (only for registered users)
-        if (update.getMessage().hasText() && update.getMessage().getText().equals("/new-admin")) {
+        if (update.getMessage().hasText() && update.getMessage().getText().equals("/new_admin")) {
             if (status.equals("REGISTERED") || isAdmin(chatId)) {
                 Database.setUserAdmin(chatId, true);
                 sendText(chatId, "✅ Congratulations! You now have admin rights!\n\n" +
@@ -694,11 +694,11 @@ public class LogistBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "ramazon_bobik_bot"; // CHANGE THIS
+        return "smmuzholding_bot";
     }
 
     @Override
     public String getBotToken() {
-        return "8528436628:AAGH9iUhA20EOVIVlaIV-a4lCIjkcWfGsEo"; // CHANGE THIS
+        return "7868772017:AAFaXax7CGj4XOSUBenLNOncoyA21BxUXaA";
     }
 }
