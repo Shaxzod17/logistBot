@@ -6,7 +6,6 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.sql.Connection;
@@ -28,7 +27,6 @@ public class LogistBot extends TelegramLongPollingBot {
         return instance;
     }
 
-    // Method to check if user is admin (from database)
     private boolean isAdmin(Long chatId) {
         return Database.isUserAdmin(chatId);
     }
@@ -39,28 +37,56 @@ public class LogistBot extends TelegramLongPollingBot {
         if (!update.hasMessage()) return;
 
         Long chatId = update.getMessage().getChatId();
+        String chatType = update.getMessage().getChat().getType(); // "private", "group", "supergroup"
+
+        // ============ ОБРАБОТКА ДОБАВЛЕНИЯ БОТА В ГРУППУ ============
+        if (update.getMessage().getNewChatMembers() != null) {
+            for (org.telegram.telegrambots.meta.api.objects.User user : update.getMessage().getNewChatMembers()) {
+                if (user.getUserName() != null && user.getUserName().equals(getBotUsername().replace("@", ""))) {
+                    if (chatType.equals("group") || chatType.equals("supergroup")) {
+                        String groupName = update.getMessage().getChat().getTitle();
+                        Database.saveGroup(chatId, groupName);
+                        sendText(chatId, "👋 Dear driver, this bot helps resolve your issues and improve our system. Report any employee concerns here.");
+                        System.out.println("✅ Bot added to group: " + groupName + " (" + chatId + ")");
+                    }
+                    return;
+                }
+            }
+        }
+
+        // ============ ОБРАБОТКА УДАЛЕНИЯ БОТА ИЗ ГРУППЫ ============
+        if (update.getMessage().getLeftChatMember() != null) {
+            org.telegram.telegrambots.meta.api.objects.User leftUser = update.getMessage().getLeftChatMember();
+            if (leftUser.getUserName() != null && leftUser.getUserName().equals(getBotUsername().replace("@", ""))) {
+                Database.deactivateGroup(chatId);
+                System.out.println("❌ Bot removed from group: " + chatId);
+                return;
+            }
+        }
+
+        // ============ ИГНОРИРУЕМ СООБЩЕНИЯ ИЗ ГРУПП ============
+        if (chatType.equals("group") || chatType.equals("supergroup")) {
+            return;
+        }
 
         // ============ HANDLE ADMIN COMMANDS FIRST ============
         if (isAdmin(chatId) && update.getMessage().hasText()) {
             String text = update.getMessage().getText();
             if (handleAdminCommand(chatId, text)) {
-                return; // Admin command was handled, stop processing
+                return;
             }
         }
 
         // ============ REGULAR USER FLOW ============
-        // Create user if not exists
         Database.createUser(chatId);
         String status = Database.getUserStatus(chatId);
 
-        // Handle /start command
         if (update.getMessage().hasText() && update.getMessage().getText().equals("/start")) {
             Database.updateUserStatus(chatId, "WAITING_NAME");
             sendText(chatId, "Hello! 👋\n\nPlease, enter your name:");
             return;
         }
 
-        // Handle /new-admin command (only for registered users)
         if (update.getMessage().hasText() && update.getMessage().getText().equals("/new_admin")) {
             if (status.equals("REGISTERED") || isAdmin(chatId)) {
                 Database.setUserAdmin(chatId, true);
@@ -74,7 +100,6 @@ public class LogistBot extends TelegramLongPollingBot {
             }
         }
 
-        // Handle name input
         if (status.equals("WAITING_NAME") && update.getMessage().hasText()) {
             String name = update.getMessage().getText();
             Database.updateUserName(chatId, name);
@@ -83,14 +108,12 @@ public class LogistBot extends TelegramLongPollingBot {
             return;
         }
 
-        // Handle menu buttons
         if (status.equals("REGISTERED") && update.getMessage().hasText()) {
             String text = update.getMessage().getText();
             handleMenuSelection(chatId, text);
             return;
         }
 
-        // Handle submenu buttons
         if ((status.equals("DISPATCH_MENU") || status.equals("ACCOUNTING_MENU") ||
                 status.equals("FLEET_MENU") || status.equals("SAFETY_MENU") ||
                 status.equals("ELD_MENU") || status.equals("HR_MENU")) && update.getMessage().hasText()) {
@@ -99,7 +122,6 @@ public class LogistBot extends TelegramLongPollingBot {
             return;
         }
 
-        // Handle message input after selecting option
         if (status.startsWith("DISPATCH_") || status.startsWith("ACCOUNTING_") ||
                 status.startsWith("FLEET_") || status.startsWith("SAFETY_") ||
                 status.startsWith("ELD_") || status.startsWith("HR_") ||
@@ -114,7 +136,6 @@ public class LogistBot extends TelegramLongPollingBot {
             return;
         }
 
-        // Handle new idea input
         if (status.equals("WAITING_NEW_IDEA") && update.getMessage().hasText()) {
             String idea = update.getMessage().getText();
             saveUserMessage(chatId, "NEW_IDEA", idea);
@@ -186,8 +207,12 @@ public class LogistBot extends TelegramLongPollingBot {
                 sendText(chatId, "✅ Your admin rights have been removed!");
                 return true;
             }
+            case "/groups" -> {
+                showAllGroups(chatId);
+                return true;
+            }
             default -> {
-                return false; // Not an admin command
+                return false;
             }
         }
     }
@@ -214,6 +239,7 @@ public class LogistBot extends TelegramLongPollingBot {
                 
                 📊 **Statistics:**
                 /stats - View statistics
+                /groups - View all groups
                 
                 👥 **Admin Management:**
                 /listadmins - List all admins
@@ -289,12 +315,14 @@ public class LogistBot extends TelegramLongPollingBot {
         int totalUnread = Database.getUnreadCount();
         int totalUsers = Database.getTotalUsersCount();
         int totalAdmins = Database.getAllAdmins().size();
+        int activeGroups = Database.getActiveGroupsCount();
 
         String stats = String.format("""
                         📊 **STATISTICS**
                         
                         👥 Total Registered Users: %d
                         👑 Total Admins: %d
+                        👥 Active Groups: %d
                         📨 Total Messages: %d
                         🔔 Unread Messages: %d
                         ✅ Read Messages: %d
@@ -313,6 +341,7 @@ public class LogistBot extends TelegramLongPollingBot {
                         """,
                 totalUsers,
                 totalAdmins,
+                activeGroups,
                 totalMessages,
                 totalUnread,
                 totalMessages - totalUnread,
@@ -343,6 +372,34 @@ public class LogistBot extends TelegramLongPollingBot {
             message.append(count++).append(". Chat ID: ").append(adminChatId);
             if (adminChatId.equals(chatId)) {
                 message.append(" (You)");
+            }
+            message.append("\n");
+        }
+
+        sendText(chatId, message.toString());
+    }
+
+    @SneakyThrows
+    private void showAllGroups(Long chatId) {
+        List<GroupInfo> groups = Database.getAllGroups();
+        if (groups.isEmpty()) {
+            sendText(chatId, "📭 No groups found.");
+            return;
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm");
+        StringBuilder message = new StringBuilder("👥 **All Groups** (" + groups.size() + "):\n\n");
+
+        int count = 1;
+        for (GroupInfo group : groups) {
+            message.append(count++).append(". ").append(group.getGroupName()).append("\n");
+            message.append("   ID: ").append(group.getChatId()).append("\n");
+            message.append("   Status: ").append(group.isActive() ? "✅ Active" : "❌ Inactive").append("\n");
+            message.append("   Added: ").append(dateFormat.format(group.getAddedDate())).append("\n");
+            if (group.getLastReminderDate() != null) {
+                message.append("   Last Reminder: ").append(dateFormat.format(group.getLastReminderDate())).append("\n");
+            } else {
+                message.append("   Last Reminder: Never\n");
             }
             message.append("\n");
         }
@@ -389,7 +446,6 @@ public class LogistBot extends TelegramLongPollingBot {
                 message.length() > 100 ? message.substring(0, 100) + "..." : message
         );
 
-        // Send notification to all admins
         List<Long> admins = Database.getAllAdmins();
         for (Long adminChatId : admins) {
             try {
@@ -502,9 +558,6 @@ public class LogistBot extends TelegramLongPollingBot {
             stmt.executeUpdate();
 
             System.out.println("Message saved with status: " + statusCode + " - " + message);
-
-            // Track last message date
-            Database.updateLastMessageDate(chatId);
 
             notifyAdmin(chatId, statusCode, message);
         } catch (Exception e) {
@@ -639,7 +692,6 @@ public class LogistBot extends TelegramLongPollingBot {
         return keyboard;
     }
 
-    // ============ BOT CREDENTIALS ============
     @Override
     public String getBotUsername() {
         return "smmuzholding_bot";

@@ -16,43 +16,48 @@ public class ReminderScheduler {
         this.bot = bot;
     }
 
-    // Run on 1st and 15th of every month at 10:00 AM
-    @Scheduled(cron = "0 0 10 1,15 * ?")
-    public void sendReminders() {
+    // Запуск каждые 15 дней в 10:00
+    @Scheduled(cron = "0 0 10 */15 * ?")
+    public void sendGroupReminders() {
         if (bot == null) {
             System.err.println("Bot not initialized for scheduler");
             return;
         }
 
-        System.out.println("🔔 Checking for users who need reminders...");
+        System.out.println("🔔 Checking groups for reminders...");
 
-        List<Long> usersToRemind = Database.getUsersNeedingReminder();
+        List<Long> groupsToRemind = Database.getGroupsNeedingReminder();
 
-        System.out.println("Found " + usersToRemind.size() + " users to remind");
+        System.out.println("Found " + groupsToRemind.size() + " groups to remind");
 
-        for (Long chatId : usersToRemind) {
+        for (Long chatId : groupsToRemind) {
             try {
-                sendReminderMessage(chatId);
-                Database.updateLastReminderDate(chatId);
-                System.out.println("✅ Sent reminder to user: " + chatId);
-                Thread.sleep(100);
+                sendGroupReminderMessage(chatId);
+                Database.updateGroupReminderDate(chatId);
+                System.out.println("✅ Sent reminder to group: " + chatId);
+                Thread.sleep(1000);
             } catch (Exception e) {
-                System.err.println("❌ Failed to send reminder to " + chatId + ": " + e.getMessage());
+                System.err.println("❌ Failed to send reminder to group " + chatId + ": " + e.getMessage());
+                if (e.getMessage() != null && (e.getMessage().contains("bot was blocked") ||
+                        e.getMessage().contains("bot was kicked") ||
+                        e.getMessage().contains("chat not found"))) {
+                    Database.deactivateGroup(chatId);
+                }
             }
         }
 
-        System.out.println("✅ Reminder sending completed");
+        System.out.println("✅ Group reminder sending completed");
     }
 
-    private void sendReminderMessage(Long chatId) throws TelegramApiException {
+    private void sendGroupReminderMessage(Long chatId) throws TelegramApiException {
         String reminderText = """
-                👋 Hello!
+                👋 Hi everyone!
                 
-                It's been a while since we heard from you. 
+                As a reminder, you can write me a private message with any questions, suggestions, or ideas!
                 
-                📝 If you have any questions, feedback, or new ideas, feel free to share them with us!
+                📝 Report any employee concerns here.
                 
-                We're here to help! 😊
+                I'll be glad to help! 😊
                 """;
 
         SendMessage message = new SendMessage();
