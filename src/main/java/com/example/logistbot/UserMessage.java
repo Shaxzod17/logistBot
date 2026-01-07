@@ -9,7 +9,6 @@ public class UserMessage {
     private String message;
     private Timestamp createdAt;
     private String userName;
-    private String phoneNumber;
     private boolean isRead;
 
     public UserMessage() {
@@ -63,14 +62,6 @@ public class UserMessage {
         this.userName = userName;
     }
 
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
     public boolean isRead() {
         return isRead;
     }
@@ -88,7 +79,6 @@ public class UserMessage {
                 ", message='" + message + '\'' +
                 ", createdAt=" + createdAt +
                 ", userName='" + userName + '\'' +
-                ", phoneNumber='" + phoneNumber + '\'' +
                 ", isRead=" + isRead +
                 '}';
     }

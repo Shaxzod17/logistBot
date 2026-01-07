@@ -17,13 +17,16 @@ public class LogistBotApplication {
             System.out.println("Initializing database...");
             Database.initDatabase();
 
+            System.out.println("Starting Spring context...");
+            ConfigurableApplicationContext context =
+                    SpringApplication.run(LogistBotApplication.class, args);
+
             System.out.println("Starting Telegram bot...");
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-            LogistBot bot = new LogistBot();
+
+            LogistBot bot = context.getBean(LogistBot.class);
             botsApi.registerBot(bot);
 
-            // Start Spring context for scheduling
-            ConfigurableApplicationContext context = SpringApplication.run(LogistBotApplication.class, args);
             ReminderScheduler scheduler = context.getBean(ReminderScheduler.class);
             scheduler.setBot(bot);
 

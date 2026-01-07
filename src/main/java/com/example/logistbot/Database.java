@@ -10,7 +10,7 @@ import java.util.List;
 public class Database {
     private static final String URL = "jdbc:postgresql://localhost:5432/telegram_bot";
     private static final String USER = "postgres";
-    private static final String PASSWORD = "1111";
+    private static final String PASSWORD = "root123";
 
     public static Connection getConnection() throws Exception {
         Class.forName("org.postgresql.Driver");
@@ -23,7 +23,6 @@ public class Database {
                 id SERIAL PRIMARY KEY,
                 chat_id BIGINT UNIQUE NOT NULL,
                 name VARCHAR(255),
-                phone_number VARCHAR(50),
                 status VARCHAR(50) DEFAULT 'START',
                 is_admin BOOLEAN DEFAULT FALSE,
                 last_message_date TIMESTAMP,
@@ -104,23 +103,11 @@ public class Database {
         }
     }
 
-    public static void updateUserPhone(Long chatId, String phone) {
-        String sql = "UPDATE users SET phone_number = ? WHERE chat_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, phone);
-            stmt.setLong(2, chatId);
-            stmt.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     // ============ ADMIN METHODS ============
 
     public static List<UserMessage> getAllMessages() {
         List<UserMessage> messages = new ArrayList<>();
-        String sql = "SELECT um.*, u.name, u.phone_number FROM user_messages um " +
+        String sql = "SELECT um.*, u.name FROM user_messages um " +
                 "LEFT JOIN users u ON um.chat_id = u.chat_id " +
                 "ORDER BY um.created_at DESC LIMIT 50";
 
@@ -135,7 +122,6 @@ public class Database {
                 msg.setMessage(rs.getString("message"));
                 msg.setCreatedAt(rs.getTimestamp("created_at"));
                 msg.setUserName(rs.getString("name"));
-                msg.setPhoneNumber(rs.getString("phone_number"));
                 msg.setRead(rs.getBoolean("is_read"));
                 messages.add(msg);
             }
@@ -147,7 +133,7 @@ public class Database {
 
     public static List<UserMessage> getMessagesByCategory(String category) {
         List<UserMessage> messages = new ArrayList<>();
-        String sql = "SELECT um.*, u.name, u.phone_number FROM user_messages um " +
+        String sql = "SELECT um.*, u.name FROM user_messages um " +
                 "LEFT JOIN users u ON um.chat_id = u.chat_id " +
                 "WHERE um.status_code LIKE ? " +
                 "ORDER BY um.created_at DESC LIMIT 50";
@@ -164,7 +150,6 @@ public class Database {
                 msg.setMessage(rs.getString("message"));
                 msg.setCreatedAt(rs.getTimestamp("created_at"));
                 msg.setUserName(rs.getString("name"));
-                msg.setPhoneNumber(rs.getString("phone_number"));
                 msg.setRead(rs.getBoolean("is_read"));
                 messages.add(msg);
             }
@@ -176,7 +161,7 @@ public class Database {
 
     public static List<UserMessage> getUnreadMessages() {
         List<UserMessage> messages = new ArrayList<>();
-        String sql = "SELECT um.*, u.name, u.phone_number FROM user_messages um " +
+        String sql = "SELECT um.*, u.name FROM user_messages um " +
                 "LEFT JOIN users u ON um.chat_id = u.chat_id " +
                 "WHERE um.is_read = FALSE " +
                 "ORDER BY um.created_at DESC";
@@ -192,7 +177,6 @@ public class Database {
                 msg.setMessage(rs.getString("message"));
                 msg.setCreatedAt(rs.getTimestamp("created_at"));
                 msg.setUserName(rs.getString("name"));
-                msg.setPhoneNumber(rs.getString("phone_number"));
                 msg.setRead(rs.getBoolean("is_read"));
                 messages.add(msg);
             }
@@ -246,8 +230,7 @@ public class Database {
     }
 
     public static void markMessageAsRead(int messageId) {
-        String sql = "UPDATE user_messages SET is_read = TRUE WHERE id = ?";
-        try (Connection conn = getConnection();
+        String sql = "UPDATE user_messages SET is_read = TRUE WHERE id = ?";        try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, messageId);
             stmt.executeUpdate();

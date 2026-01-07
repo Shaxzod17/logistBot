@@ -1,6 +1,7 @@
 package com.example.logistbot;
 
 import lombok.SneakyThrows;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -14,7 +15,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class LogistBot extends TelegramLongPollingBot {
+
     private static LogistBot instance;
 
     public LogistBot() {
@@ -40,7 +43,6 @@ public class LogistBot extends TelegramLongPollingBot {
         // ============ HANDLE ADMIN COMMANDS FIRST ============
         if (isAdmin(chatId) && update.getMessage().hasText()) {
             String text = update.getMessage().getText();
-
             if (handleAdminCommand(chatId, text)) {
                 return; // Admin command was handled, stop processing
             }
@@ -76,21 +78,8 @@ public class LogistBot extends TelegramLongPollingBot {
         if (status.equals("WAITING_NAME") && update.getMessage().hasText()) {
             String name = update.getMessage().getText();
             Database.updateUserName(chatId, name);
-            Database.updateUserStatus(chatId, "WAITING_CONTACT");
-            sendContactRequest(chatId);
-            return;
-        }
-
-        // Handle contact
-        if (status.equals("WAITING_CONTACT")) {
-            if (update.getMessage().hasContact()) {
-                String phone = update.getMessage().getContact().getPhoneNumber();
-                Database.updateUserPhone(chatId, phone);
-                Database.updateUserStatus(chatId, "REGISTERED");
-                sendMainMenu(chatId);
-            } else {
-                sendText(chatId, "Please share your contact! 📞");
-            }
+            Database.updateUserStatus(chatId, "REGISTERED");
+            sendMainMenu(chatId);
             return;
         }
 
@@ -115,7 +104,6 @@ public class LogistBot extends TelegramLongPollingBot {
                 status.startsWith("FLEET_") || status.startsWith("SAFETY_") ||
                 status.startsWith("ELD_") || status.startsWith("HR_") ||
                 status.startsWith("WAITING_")) {
-
             if (update.getMessage().hasText()) {
                 String message = update.getMessage().getText();
                 saveUserMessage(chatId, status, message);
@@ -205,7 +193,6 @@ public class LogistBot extends TelegramLongPollingBot {
     }
 
     // ============ ADMIN METHODS ============
-
     @SneakyThrows
     private void sendAdminMenu(Long chatId) {
         String menu = """
@@ -241,7 +228,6 @@ public class LogistBot extends TelegramLongPollingBot {
     @SneakyThrows
     private void sendAllMessages(Long chatId) {
         List<UserMessage> messages = Database.getAllMessages();
-
         if (messages.isEmpty()) {
             sendText(chatId, "📭 No messages found.");
             return;
@@ -261,7 +247,6 @@ public class LogistBot extends TelegramLongPollingBot {
     @SneakyThrows
     private void sendUnreadMessages(Long chatId) {
         List<UserMessage> messages = Database.getUnreadMessages();
-
         if (messages.isEmpty()) {
             sendText(chatId, "✅ No unread messages!");
             return;
@@ -282,7 +267,6 @@ public class LogistBot extends TelegramLongPollingBot {
     @SneakyThrows
     private void sendMessagesByCategory(Long chatId, String category) {
         List<UserMessage> messages = Database.getMessagesByCategory(category);
-
         if (messages.isEmpty()) {
             sendText(chatId, "📭 No messages found for category: " + category);
             return;
@@ -307,26 +291,26 @@ public class LogistBot extends TelegramLongPollingBot {
         int totalAdmins = Database.getAllAdmins().size();
 
         String stats = String.format("""
-                📊 **STATISTICS**
-                
-                👥 Total Registered Users: %d
-                👑 Total Admins: %d
-                📨 Total Messages: %d
-                🔔 Unread Messages: %d
-                ✅ Read Messages: %d
-                
-                📂 **Messages by Department:**
-                📦 Dispatch: %d messages
-                💰 Accounting: %d messages
-                🚛 Fleet: %d messages
-                🛡 Safety: %d messages
-                📱 ELD: %d messages
-                👥 HR: %d messages
-                💡 New Ideas: %d messages
-                
-                ━━━━━━━━━━━━━━━━━━
-                Last updated: %s
-                """,
+                        📊 **STATISTICS**
+                        
+                        👥 Total Registered Users: %d
+                        👑 Total Admins: %d
+                        📨 Total Messages: %d
+                        🔔 Unread Messages: %d
+                        ✅ Read Messages: %d
+                        
+                        📂 **Messages by Department:**
+                        📦 Dispatch: %d messages
+                        💰 Accounting: %d messages
+                        🚛 Fleet: %d messages
+                        🛡 Safety: %d messages
+                        📱 ELD: %d messages
+                        👥 HR: %d messages
+                        💡 New Ideas: %d messages
+                        
+                        ━━━━━━━━━━━━━━━━━━
+                        Last updated: %s
+                        """,
                 totalUsers,
                 totalAdmins,
                 totalMessages,
@@ -348,14 +332,12 @@ public class LogistBot extends TelegramLongPollingBot {
     @SneakyThrows
     private void listAllAdmins(Long chatId) {
         List<Long> admins = Database.getAllAdmins();
-
         if (admins.isEmpty()) {
             sendText(chatId, "📭 No admins found.");
             return;
         }
 
         StringBuilder message = new StringBuilder("👥 **All admins** (" + admins.size() + "):\n\n");
-
         int count = 1;
         for (Long adminChatId : admins) {
             message.append(count++).append(". Chat ID: ").append(adminChatId);
@@ -373,22 +355,17 @@ public class LogistBot extends TelegramLongPollingBot {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
         return String.format("""
-                ━━━━━━━━━━━━━━━━━━
-                %s Message ID: %d
-                👤 User: %s
-                📞 Phone: %s
-                📂 Category: %s
-                
-                💬 Message:
-                "%s"
-                
-                ⏰ Time: %s
-                ━━━━━━━━━━━━━━━━━━
-                """,
+                        ━━━━━━━━━━━━━━━━━━
+                        %s Message ID: %d
+                        👤 User: %s
+                        📂 Category: %s
+                        💬 Message: "%s"
+                        ⏰ Time: %s
+                        ━━━━━━━━━━━━━━━━━━
+                        """,
                 readStatus,
                 msg.getId(),
                 msg.getUserName() != null ? msg.getUserName() : "Unknown",
-                msg.getPhoneNumber() != null ? msg.getPhoneNumber() : "N/A",
                 msg.getStatusCode(),
                 msg.getMessage(),
                 dateFormat.format(msg.getCreatedAt())
@@ -398,18 +375,15 @@ public class LogistBot extends TelegramLongPollingBot {
     @SneakyThrows
     private void notifyAdmin(Long userChatId, String statusCode, String message) {
         String notification = String.format("""
-                🔔 **NEW MESSAGE RECEIVED!**
-                
-                👤 User Chat ID: %d
-                📂 Category: %s
-                
-                💬 Message:
-                "%s"
-                
-                ━━━━━━━━━━━━━━━━━━
-                Use /unread to view all unread messages
-                or /admin to see the full menu.
-                """,
+                        🔔 **NEW MESSAGE RECEIVED!**
+                        
+                        👤 User Chat ID: %d
+                        📂 Category: %s
+                        💬 Message: "%s"
+                        
+                        ━━━━━━━━━━━━━━━━━━
+                        Use /unread to view all unread messages or /admin to see the full menu.
+                        """,
                 userChatId,
                 statusCode,
                 message.length() > 100 ? message.substring(0, 100) + "..." : message
@@ -425,8 +399,8 @@ public class LogistBot extends TelegramLongPollingBot {
             }
         }
     }
-    // ============ USER METHODS ============
 
+    // ============ USER METHODS ============
     private void handleMenuSelection(Long chatId, String selection) {
         switch (selection) {
             case "📦 Dispatch Team" -> {
@@ -519,56 +493,31 @@ public class LogistBot extends TelegramLongPollingBot {
 
     private void saveUserMessage(Long chatId, String statusCode, String message) {
         String sql = "INSERT INTO user_messages (chat_id, status_code, message) VALUES (?, ?, ?)";
+
         try (Connection conn = Database.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, chatId);
             stmt.setString(2, statusCode);
             stmt.setString(3, message);
             stmt.executeUpdate();
+
             System.out.println("Message saved with status: " + statusCode + " - " + message);
 
             // Track last message date
             Database.updateLastMessageDate(chatId);
 
             notifyAdmin(chatId, statusCode, message);
-
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     // ============ TELEGRAM UI METHODS ============
-
     @SneakyThrows
     private void sendText(Long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(text);
-        execute(message);
-    }
-
-    @SneakyThrows
-    private void sendContactRequest(Long chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Please share your phone number. 📞");
-
-        ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
-        keyboard.setResizeKeyboard(true);
-        keyboard.setOneTimeKeyboard(true);
-
-        List<KeyboardRow> keyboardRows = new ArrayList<>();
-        KeyboardRow row = new KeyboardRow();
-
-        KeyboardButton contactButton = new KeyboardButton();
-        contactButton.setText("📞 Send contact");
-        contactButton.setRequestContact(true);
-
-        row.add(contactButton);
-        keyboardRows.add(row);
-        keyboard.setKeyboard(keyboardRows);
-
-        message.setReplyMarkup(keyboard);
         execute(message);
     }
 
@@ -691,7 +640,6 @@ public class LogistBot extends TelegramLongPollingBot {
     }
 
     // ============ BOT CREDENTIALS ============
-
     @Override
     public String getBotUsername() {
         return "smmuzholding_bot";
