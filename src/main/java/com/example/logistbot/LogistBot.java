@@ -694,11 +694,11 @@ public class LogistBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "smmuzholding_bot";
+        return "smmuz_holding_bot";
     }
 
     @Override
     public String getBotToken() {
-        return "7868772017:AAFaXax7CGj4XOSUBenLNOncoyA21BxUXaA";
+        return "8242915004:AAGgTvxCj-FZybp1UnpDFWmzjCQWRkRcSng";
     }
 }
